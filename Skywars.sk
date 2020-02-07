@@ -1,0 +1,2620 @@
+command /help [<text=help>]:
+    trigger:
+        if player is op:
+            send "&b&m---------------------------------------"
+            send ""
+            send "&7Vous voyez ce message car vous etes &8OP"
+            send ""
+            send "&7Commandes disponible:"
+            send "&e/skywars toconfig <on:off> &7Gestion de activation ou desactivation des teams"
+            send "&e/maxteams set <nombre> &7le maximum des joueurs par team"
+            send "&e/skywars start &7Force le démarrage"
+            send "&e/game spawn &7pour defenir les spawn"
+            send ""
+            send "&bPlugin Par: &e&lCHEFBR"
+            send "&b&m---------------------------------------"
+options:
+    prefix: &b&lSkywars &f&r➤
+			
+on load:
+	execute console command "/scoreboard teams add Blue"
+	execute console command "/scoreboard teams option Blue color blue"
+	execute console command "/scoreboard teams option Blue friendlyFire false"
+				
+	execute console command "/scoreboard teams add Red"
+	execute console command "/scoreboard teams option Red color red"
+	execute console command "/scoreboard teams option Red friendlyFire false"
+				
+	execute console command "/scoreboard teams add Green"
+	execute console command "/scoreboard teams option Green color green"
+	execute console command "/scoreboard teams option Green friendlyFire false"
+				
+	execute console command "/scoreboard teams add Magenta"
+	execute console command "/scoreboard teams option Magenta color light_purple"
+	execute console command "/scoreboard teams option Magenta friendlyFire false"
+	
+	execute console command "/scoreboard teams add Purple"
+	execute console command "/scoreboard teams option Purple color dark_purple"
+	execute console command "/scoreboard teams option Purple friendlyFire false"
+	
+	execute console command "/scoreboard teams add Orange"
+	execute console command "/scoreboard teams option Orange color Orange"
+	execute console command "/scoreboard teams option Orange friendlyFire false"
+	
+	execute console command "/scoreboard teams add Yellow"
+	execute console command "/scoreboard teams option Yellow color yellow"
+	execute console command "/scoreboard teams option Yellow friendlyFire false"
+	
+	execute console command "/scoreboard teams add Gray"
+	execute console command "/scoreboard teams option Gray color Gray"
+	execute console command "/scoreboard teams option Gray friendlyFire false"
+	
+	execute console command "/scoreboard teams add Cyan"
+	execute console command "/scoreboard teams option Cyan color dark_aqua"
+	execute console command "/scoreboard teams option Cyan friendlyFire false"
+	
+	execute console command "/scoreboard teams add Black"
+	execute console command "/scoreboard teams option Black color black"
+	execute console command "/scoreboard teams option Black friendlyFire false"
+	
+	execute console command "/scoreboard teams add Aqua"
+	execute console command "/scoreboard teams option Aqua color aqua"
+	execute console command "/scoreboard teams option Aqua friendlyFire false"
+	
+	execute console command "/scoreboard teams add Pink"
+	execute console command "/scoreboard teams option Pink color light_purple"
+	execute console command "/scoreboard teams option Pink friendlyFire false"
+	
+	execute console command "/xreg create platform"
+	
+#---------------------------------------------------------------------------#
+#					    	 SYSTEME DU MOTD								#
+#---------------------------------------------------------------------------#
+				
+on server list ping:
+	if {skywars.isStart} is not set: #Si le jeu n'est pas lancé
+		set motd to "&f&l» &e&lSkywars &f&l« &7 En attente de joueurs .. "
+	else:
+		set motd to "&f&l» &e&lSkywars &f&l« &a Partie en cours ! "	
+		
+#---------------------------------------------------------------------------#
+#					      	SYSTEME DE DE/CONNEXION							#
+#---------------------------------------------------------------------------#
+
+on join:
+	if {skywars.isStart} is not set: #Si le jeu n'est pas lancé
+		if {skywars.teams} is true:
+			give player 1 425 named "&6Choix d'equipe &7(click droit)"
+			broadcast "{@prefix} &7Le joueur &e%player% &7a rejoint la partie &8(&e%number of all players%&7/&e24&8)"
+		else:
+			broadcast "{@prefix} &7Le joueur &e%player% &7a rejoint la partie &8(&e%number of all players%&7/&e24&8)"
+		teleport player to location (0, 200, 0) #TP à la WaitingRoom
+		clear player's inventory
+		set the gamemode of the player to adventure #Gamemode aventure au joueur
+		heal player #Heal le joueur
+		add 1 to {skywars.games.%player%}
+		set tab header to "&b&lSkywars" and footer to "&8En attente de joueurs..." for player
+	if {skywars.isStart} is set: #Si le jeu est lancé
+		send "{@prefix} &7Le jeu est deja commence ! vous etes maintenant spectateur"
+		execute console command "/gamemode 3 %player%"
+		set {Equipe::%player%} to "spec"
+		if {skywars.isPaused} is set:
+			set the freeze state of player to true
+		else:
+			set the freeze state of player to false
+			
+on place:
+	if {skywars.isStart} is not set:
+		cancel event
+	if {skywars.isPaused} is set:
+		cancel event
+		send "{@prefix} &cLa partie est en pause !"
+
+on break:
+	if {skywars.isStart} is not set:
+		cancel event
+	if {skywars.isPaused} is set:
+		cancel event
+		send "&cLa partie est en pause !"
+		
+		
+on drop: #Evite le drop en lobby
+	if {skywars.isStart} is not set:
+		cancel event
+	if {skywars.isPaused} is set:
+		cancel event
+		send "&cLa partie est en pause !"
+			
+On Hunger MEter Change: #Evite le changement de faim
+	if {skywars.isStart} is not set:
+		cancel event
+	if {skywars.isPaused} is set:
+		cancel event
+			
+			
+On damage: #Evite le changement de vie
+	if {skywars.isStart} is not set: #Si le jeu n'est pas lancé
+		cancel event
+	if {skywars.isPaused} is set:
+		cancel event
+		
+on damage:
+	if {skywars.Damage} is not set:
+		if victim is a player:
+			cancel event
+on damage:
+    if damage cause is fall:
+        if {skywars.nofall} is true:
+            cancel event
+#---------------------------------------------------------------------------#
+#					   	 		CONFIGURATION								#
+#---------------------------------------------------------------------------#
+command /skywars [<text=help>] [<text>] [<player>]:
+    permission: admin.skywars
+    trigger:			
+        if arg 1 is "start":
+            if {skywars.isStart} is not set:
+                loop all players:
+                    set the freeze state of loop-player to true
+                    set the loop-player's gamemode to survival
+                    heal loop-player
+                    clear inventory of loop-player
+                    set slot 0 of loop-player to 12 cooked beef
+                    if {Equipe::%loop-player%} is not set
+                        add loop-player to {noteam::*}
+                        if {skywars.bluelimit} is 0:
+                            if {skywars.teamamx} is 3:
+                                set size of {noteam::*} to 3
+                                make loop-player execute command "/team blue"
+                            if {skywars.teamamx} is 2:
+                                set size of {noteam::*} to 2
+                                make loop-player execute command "/team blue"
+                        if {skywars.bluelimit} is 1:
+                            if {skywars.teamamx} is 3:
+                                set size of {noteam::*} to 2
+                                make loop-player execute command "/team blue"
+                            if {skywars.teamamx} is 2:
+                                set size of {noteam::*} to 1
+                                make loop-player execute command "/team blue"
+                        if {skywars.bluelimit} is 2:
+                            if {skywars.teamamx} is 3:
+                                set size of {noteam::*} to 1
+                                make loop-player execute command "/team blue"
+                    execute console command "/start1"
+                    wait 2 seconds
+                    if {skywars.teams} is false:
+                        if {skywars.Players} is 1:
+                            teleport player to {skywars.SoloSpawn.1}
+                        if {skywars.Players} is 2:
+                            teleport player to {skywars.SoloSpawn.2}
+                        if {skywars.Players} is 3:
+                            teleport player to {skywars.SoloSpawn.3}
+                        if {skywars.Players} is 4:
+                            teleport player to {skywars.SoloSpawn.4}
+                        if {skywars.Players} is 5:
+                            teleport player to {skywars.SoloSpawn.5}
+                        if {skywars.Players} is 6:
+                            teleport player to {skywars.SoloSpawn.6}
+                        if {skywars.Players} is 7:
+                            teleport player to {skywars.SoloSpawn.7}
+                        if {skywars.Players} is 8:
+                            teleport player to {skywars.SoloSpawn.8}
+                    else:
+                        if {Equipe::%loop-player%} is "Blue":
+                            teleport loop-player to {skywars.TeamSpawn.1}
+                        if {Equipe::%loop-player%} is "Red":
+                            teleport loop-player to {skywars.TeamSpawn.2}
+                        if {Equipe::%loop-player%} is "Green":
+                            teleport loop-player to {skywars.TeamSpawn.3}
+                        if {Equipe::%loop-player%} is "Magenta":
+                            teleport loop-player to {skywars.TeamSpawn.4}
+                        if {Equipe::%loop-player%} is "Purple":
+                            teleport loop-player to {skywars.TeamSpawn.5}
+                        if {Equipe::%loop-player%} is "Orange":
+                            teleport loop-player to {skywars.TeamSpawn.6}
+                        if {Equipe::%loop-player%} is "Yellow":
+                            teleport loop-player to {skywars.TeamSpawn.7}
+                        if {Equipe::%loop-player%} is "Gray":
+                            teleport loop-player to {skywars.TeamSpawn.8}
+                        if {Equipe::%loop-player%} is "Cyan":
+                            teleport loop-player to {skywars.TeamSpawn.9}
+                        if {Equipe::%loop-player%} is "Black":
+                            teleport loop-player to {skywars.TeamSpawn.10}
+                        if {Equipe::%loop-player%} is "Aqua":
+                            teleport loop-player to {skywars.TeamSpawn.11}
+                        if {Equipe::%loop-player%} is "Pink":
+                            teleport loop-player to {skywars.TeamSpawn.12}
+            else:
+                send "{@prefix} &r&7La partie est déja en cours ! Merci d'avoir utiliser &e/game reset"
+        if arg 1 is "spawn":
+            if arg 2 is not set:
+                send "&e-------------- &fAide: &bSkyWars&e--------------"
+                send "&7Il faut définir les 12 spawns des équipes. (1;2;3.. 12)"
+            else:
+                set {skywars.TeamSpawn.%arg 2%} to player's location
+                send "&aSpawn n&e%arg 2% definis &e%{skywars.TeamSpawn.%arg 2%}%"
+        if arg 1 is "spawnsolo":
+            if arg 2 is not set:
+                send "&6&m-----------------[Aide Skywars]---------------------------"
+                send "&7Il faut definir les 8 spawn (1,2,3,4,5 etc...)"
+            else:
+                set {skywars.SoloSpawn.%arg 2%} to player's location
+                send "&aSpawn N &e%arg 2% &aa ete definis: &e%{skywars.SoloSpawn.%arg 2%}%"
+
+        if arg 1 is "reset":
+            loop all players:
+                teleport loop-player to location (0, 200, 0)
+                set loop-player's tab list name to "&f%loop-player%"
+            delete {skywars.isStart}
+            clear {Equipe::*}
+            delete {skywars.isPaused}
+            set {skywars.players} to 0
+            delete {skywars.EventAction}
+            delete {skywars.Event}
+            delete {skywars.Event.S}
+            delete {skywars.noconnect}
+            delete {skywars.Damage}
+            broadcast ""
+            broadcast "{@prefix} &r&7La partie a été reset par &e&l%executor%"
+            broadcast ""
+            set {skywars.bluelimit} to 0
+            set {skywars.redlimit} to 0
+            set {skywars.Greenlimit} to 0
+            set {skywars.Magentalimit} to 0
+            set {skywars.Purplelimit} to 0
+            set {skywars.Orangelimit} to 0
+            set {skywars.Yellowlimit} to 0
+            set {skywars.Graylimit} to 0
+            set {skywars.Cyanlimit} to 0
+            set {skywars.Blacklimit} to 0
+            set {skywars.Aqualimit} to 0
+            set {skywars.Pinklimit} to 0
+            execute console command "/scoreboard teams empty Blue"
+            execute console command "/scoreboard teams empty Red"
+            execute console command "/scoreboard teams empty Green"
+            execute console command "/scoreboard teams empty Magenta"
+            execute console command "/scoreboard teams empty Purple"
+            execute console command "/scoreboard teams empty Orange"
+            execute console command "/scoreboard teams empty Yellow"
+            execute console command "/scoreboard teams empty Gray"
+            execute console command "/scoreboard teams empty Cyan"
+            execute console command "/scoreboard teams empty Aqua"
+            execute console command "/scoreboard teams empty Black"
+            execute console command "/scoreboard teams empty Pink"
+command /team [<text>]:
+    trigger:
+        if arg 1 is "blue":
+            if {skywars.bluelimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.bluelimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Blue":
+                    if {skywars.bluelimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                        set {skywars.bluelimit} to 1
+                        remove 1 from {skywars.bluelimit}
+                    if {skywars.bluelimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 2
+                        remove 1 from {skywars.bluelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.bluelimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 3
+                        remove 1 from {skywars.bluelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.GreenLimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Blue"
+                execute console command "/scoreboard teams join Blue %executor%"
+                set player's tab list name to "&9%player%"
+                add 1 to {skywars.bluelimit}
+        if arg 1 is "red":
+            if {skywars.redlimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.redlimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Red":
+                    if {skywars.Redlimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Redlimit} to 1
+                        remove 1 from {skywars.Redlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Redlimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 2
+                        remove 1 from {skywars.Redlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Redlimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Redlimit} to 3
+                        remove 1 from {skywars.Redlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Red"
+                execute console command "/scoreboard teams join Red %executor%"
+                add 1 to {skywars.Redlimit}
+                set player's tab list name to "&c%player%"
+        if arg 1 is "green":
+            if {skywars.greenlimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.greenlimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Green":
+                    if {skywars.Greenlimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Greenlimit} to 1
+                        remove 1 from {skywars.Greenlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Greenlimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 2
+                        remove 1 from {skywars.Greenlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Greenlimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 3
+                        remove 1 from {skywars.Greenlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Green"
+                execute console command "/scoreboard teams join Green %executor%"
+                add 1 to {skywars.Greenlimit}
+                set player's tab list name to "&a%player%"
+        if arg 1 is "Magenta":
+            if {skywars.Magentalimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Magentalimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Magenta":
+                    if {skywars.Magentalimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Magentalimit} to 1
+                        remove 1 from {skywars.Magentalimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Magentalimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Magentalimit} to 2
+                        remove 1 from {skywars.Magentalimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Magentalimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Magentalimit} to 3
+                        remove 1 from {skywars.Magentalimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.bluelimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Magenta"
+                execute console command "/scoreboard teams join Magenta %executor%"
+                add 1 to {skywars.Magentalimit}
+                set player's tab list name to "&d%player%"
+        if arg 1 is "Purple":
+            if {skywars.Purplelimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Purplelimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Purple":
+                    if {skywars.Purplelimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Purplelimit} to 1
+                        remove 1 from {skywars.Purplelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Purplelimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Purplelimit} to 2
+                        remove 1 from {skywars.Purplelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Purplelimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 3
+                        remove 1 from {skywars.Purplelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Purple"
+                execute console command "/scoreboard teams join Purple %executor%"
+                add 1 to {skywars.Purplelimit}
+                set player's tab list name to "&5%player%"
+        if arg 1 is "Orange":
+            if {skywars.Orangelimit} is equal to {skywars.teammax}:
+                send "{@prefix}&r&cCette equipe est plein !"
+            else if {skywars.Orangelimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Orange":
+                    if {skywars.Orangelimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Orangelimit} to 1
+                        remove 1 from {skywars.Orangelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Orangelimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Orangelimit} to 2
+                        remove 1 from {skywars.Orangelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Orangelimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.orangelimit} to 3
+                        remove 1 from {skywars.Orangelimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Orange"
+                execute console command "/scoreboard teams join Orange %executor%"
+                add 1 to {skywars.Orangelimit}
+                set player's tab list name to "&6%player%"
+        if arg 1 is "Yellow":
+            if {skywars.Yellowlimit} is equal to {skywars.teammax}:
+                send "{@prefix}&r&cCette equipe est plein !"
+            else if {skywars.Yellowlimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Yellow":
+                    if {skywars.Yellowlimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 1
+                        remove 1 from {skywars.Yellowlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Yellowlimit} is 2 : 
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Yellowlimit} to 2
+                        remove 1 from {skywars.Yellowlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Yellowlimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Yellowlimit} to 3
+                        remove 1 from {skywars.Yellowlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Yellow"
+                execute console command "/scoreboard teams join Yellow %executor%"
+                add 1 to {skywars.Yellowlimit}
+                set player's tab list name to "&e%player%"
+        if arg 1 is "Gray":
+            if {skywars.Graylimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Graylimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Gray":
+                    if {skywars.Graylimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Graylimit} to 1
+                        remove 1 from {skywars.Graylimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Graylimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.bluelimit} to 2
+                        remove 1 from {skywars.Graylimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Graylimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Graylimit} to 3
+                        remove 1 from {skywars.Graylimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Gray"
+                execute console command "/scoreboard teams join Gray %executor%"
+                add 1 to {skywars.Graylimit}
+                set player's tab list name to "&7%player%"
+        if arg 1 is "Cyan":
+            if {skywars.Cyanlimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Cyanlimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Cyan":
+                    if {skywars.Cyanlimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Cyanlimit} to 1
+                        remove 1 from {skywars.Cyanlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Cyanlimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Cyanlimit} to 2
+                        remove 1 from {skywars.Cyanlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Cyanlimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Cyanlimit} to 3
+                        remove 1 from {skywars.Cyanlimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.Redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Cyan"
+                execute console command "/scoreboard teams join Cyan %executor%"
+                add 1 to {skywars.Cyanlimit}
+                set player's tab list name to "&3%player%"
+        if arg 1 is "Aqua":
+            if {skywars.Aqualimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Aqualimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Aqua":
+                    if {skywars.Aqualimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Aqualimit} to 1
+                        remove 1 from {skywars.Aqualimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Aqualimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Aqualimit} to 2
+                        remove 1 from {skywars.Aqualimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Aqualimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Aqualimit} to 3
+                        remove 1 from {skywars.Aqualimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Aqua"
+                execute console command "/scoreboard teams join Aqua %executor%"
+                add 1 to {skywars.Aqualimit}
+                set player's tab list name to "&b%player%"
+        if arg 1 is "Black":
+            if {skywars.Blacklimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Blacklimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Black":
+                    if {skywars.Blacklimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Blacklimit} to 1
+                        remove 1 from {skywars.Blacklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Blacklimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Blacklimit} to 2
+                        remove 1 from {skywars.Blacklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Blacklimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Blacklimit} to 3
+                        remove 1 from {skywars.Blacklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Pink":
+                    remove 1 from {skywars.Pinklimit}
+                set {Equipe::%executor%} to "Black"
+                execute console command "/scoreboard teams join Black %executor%"
+                add 1 to {skywars.Blacklimit}
+                set player's tab list name to "&0%player%"
+        if arg 1 is "Pink":
+            if {skywars.Pinklimit} is equal to {skywars.teammax}:
+                send "{@prefix} &r&cCette equipe est plein !"
+            else if {skywars.Pinklimit} is not {skywars.teammax}:
+                if {Equipe::%player%} is "Pink":
+                    if {skywars.Pinklimit} is 1:
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Pinklimit} to 1
+                        remove 1 from {skywars.Pinklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Pinklimit} is 2 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Pinklimit} to 2
+                        remove 1 from {skywars.Pinklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                    if {skywars.Pinklimit} is 3 :
+                        send "{@prefix} &r&cVous etes déja dans cette equipe !"
+                        set {skywars.Pinklimit} to 3
+                        remove 1 from {skywars.Pinklimit}
+                        play raw sound "mob.villager.no" at player with pitch 1 volume 100
+                if {Equipe::%player%} is "Red":
+                    remove 1 from {skywars.redlimit}
+                if {Equipe::%player%} is "Green":
+                    remove 1 from {skywars.Greenlimit}
+                if {Equipe::%player%} is "Magenta":
+                    remove 1 from {skywars.Magentalimit}
+                if {Equipe::%player%} is "Purple":
+                    remove 1 from {skywars.Purplelimit}
+                if {Equipe::%player%} is "Orange":
+                    remove 1 from {skywars.Orangelimit}
+                if {Equipe::%player%} is "Yellow":
+                    remove 1 from {skywars.Yellowlimit}
+                if {Equipe::%player%} is "Gray":
+                    remove 1 from {skywars.Graylimit}
+                if {Equipe::%player%} is "Cyan":
+                    remove 1 from {skywars.Cyanlimit}
+                if {Equipe::%player%} is "Black":
+                    remove 1 from {skywars.Blacklimit}
+                if {Equipe::%player%} is "Aqua":
+                    remove 1 from {skywars.Aqualimit}
+                if {Equipe::%player%} is "Blue":
+                    remove 1 from {skywars.Bluelimit}
+                set {Equipe::%executor%} to "Pink"
+                execute console command "/scoreboard teams join Pink %executor%"
+                add 1 to {skywars.Pinklimit}
+                set player's tab list name to "&d[P]&d%player%"
+on quit:
+    if {skywars.isStart} is not set:
+        if {skywars.teams} is "true":
+            if {Equipe::%player%} is "Red":
+                remove 1 from {skywars.redlimit}
+            if {Equipe::%player%} is "Green":
+                remove 1 from {skywars.Greenlimit}
+            if {Equipe::%player%} is "Magenta":
+                remove 1 from {skywars.Magentalimit}
+            if {Equipe::%player%} is "Purple":
+                remove 1 from {skywars.Purplelimit}
+            if {Equipe::%player%} is "Orange":
+                remove 1 from {skywars.Orangelimit}
+            if {Equipe::%player%} is "Yellow":
+                remove 1 from {skywars.Yellowlimit}
+            if {Equipe::%player%} is "Gray":
+                remove 1 from {skywars.Graylimit}
+            if {Equipe::%player%} is "Cyan":
+                remove 1 from {skywars.Cyanlimit}
+            if {Equipe::%player%} is "Black":
+                remove 1 from {skywars.Blacklimit}
+            if {Equipe::%player%} is "Aqua":
+                remove 1 from {skywars.Aqualimit}
+            if {Equipe::%player%} is "Blue": 
+                remove 1 from {skywars.Bluelimit}
+command /toconfig [<text>]:
+    trigger:
+        if player is op:
+            if arg 1 is "on":
+                set {skywars.teams} to true
+                loop all players:
+                    give loop-player 1 425 named "&6Choisi une team"
+                broadcast ""
+                broadcast "{@prefix}&7Les teams sont maintenant activer par &e&l%executor% !"
+                broadcast ""
+            if arg 1 is "off":
+                set {skywars.teams} to false
+                loop all players:
+                    clear loop-player's inventory
+                broadcast ""
+                broadcast "{@prefix} &7Les teams sont maintenant desactiver par &e&l%executor% !"
+                broadcast ""
+                set {skywars.teammax} to 0
+                set {skywars.Bluelimit} to 0
+                set {skywars.Redlimit} to 0
+                set {skywars.Greenlimit} to 0
+                set {skywars.Magentalimit} to 0
+                set {skywars.Purplelimit} to 0
+                set {skywars.Orangelimit} to 0
+                set {skywars.Yellowlimit} to 0
+                set {skywars.Graylimit} to 0
+                set {skywars.Cyanlimit} to 0
+                set {skywars.Blacklimit} to 0
+                set {skywars.Aqualimit} to 0
+                set {skywars.Pinklimit} to 0
+                execute console command "/scoreboard teams empty Blue"
+                execute console command "/scoreboard teams empty Red"
+                execute console command "/scoreboard teams empty Green"
+                execute console command "/scoreboard teams empty Magenta"
+                execute console command "/scoreboard teams empty Purple"
+                execute console command "/scoreboard teams empty Orange"
+                execute console command "/scoreboard teams empty Yellow"
+                execute console command "/scoreboard teams empty Gray"
+                execute console command "/scoreboard teams empty Cyan"
+                execute console command "/scoreboard teams empty Black"
+                execute console command "/scoreboard teams empty Aqua"
+                execute console command "/scoreboard teams empty Pink"
+on join:
+    if {skywars.noconnect} is set:
+        kick player due to "&eLa partie est en train de reset"
+every 3 seconds:
+    if {skywars.isStart} is not set:
+        if number of all players >= {skywars.minplayer}:
+            broadcast ""
+            broadcast "{@prefix} &aLa partie va se lancer dans 30 secondes"
+            broadcast ""
+            stop
+            if {skywars.teams} is true:
+                broadcast ""
+                broadcast "{@prefix} &r&7N'oubliez pas de choisir une team !"
+                broadcast ""
+                stop
+            else:
+                broadcast "{@prefix} &r&cLe crossteam et &c&l&nInterdit"
+                broadcast ""
+                stop
+            wait 24 seconds
+            broadcast "" 
+            broadcast "{@prefix} &aLa partie va se lancer dans 5 secondes"
+            broadcast ""	
+            stop
+            wait 6 seconds
+            execute console command "/game forcestart"
+    loop all players:
+        set action bar of loop-player to "&cJoueurs manque &e%{skywars.minplayer} - number of all players%"
+    if {skywars.isStart} is set:
+        loop all players:
+            set action bar of loop-player to " "
+command /minplayers [<text>] [<number>]:
+    trigger:
+        if arg 1 is "set":
+            if number argument is set:
+                set {skywars.minplayers} to arg 2
+command /bc [<text>]:
+	trigger:
+		if player is op:
+			if arg 1 is set:
+				broadcast ""
+				broadcast "&7&l¦ &e&lBROADCAST &r&e%player% &f&l» &f%arg 1%"
+				broadcast ""
+			else:
+				send "&cMerci de définir un message" 
+command /maxteams [<text=help>] [<number>]:
+    permission: admin.skywars
+    trigger:
+        if arg 1 is not set:
+            send "&cUsage: /maxteams set <nomber>"
+        if arg 1 is "set":
+            if arg 2 is not set:
+                send "&cUsage: /maxteams set <nombre>"
+            if number argument is set:
+                set {skywars.teammax} to arg 2
+                broadcast "{@prefix} &r&7Le max des teams est maintenant &e%{skywars.teammax}% &7par &e&l%executor%"
+command /givecoins [<player>] [<number>]:
+    permission: admin.skywars
+    trigger:
+        if arg 1 is set:
+            if number argument is set:
+                add arg 2 to {altasy.coins.%arg 1%}
+                send "{@prefix} &r&7Vous avez donné &e%arg 2% &ecoins &7a &e%arg 1%"
+command /firstload:
+	permission: refill.admin
+	trigger:
+		add 1 iron sword to {randomitems.list::*}
+		add 3 golden apples to {randomitems.list::*}
+		add 32 stone to {randomitems.list::*}
+		add 32 wood to {randomitems.list::*}
+		add 32 stone to {randomitems.list::*}
+		
+command /refill:
+	permission: refill.admin
+	trigger:
+		loop blocks in radius 5000 around {middle}:
+			if loop-block is a chest:
+				clear loop-block's inventory
+				set {_randomitem} to random element out of {randomitems.list::*}
+				add {_randomitem} to loop-block's inventory
+				broadcast "&b&m---------------------------------------"
+				broadcast " "
+				broadcast "&e&l✦ &r&6Les coffres ont été rempli &e&l✦"
+				broadcast " "
+				broadcast "&b&m---------------------------------------"
+				play raw sound "block.chest.open" at all players with pitch 1 volume 200
+			
+command /setmiddle:
+	permission: refill.admin
+	trigger:
+		set {middle} to location of player
+		send "&ale mid a été defeni"
+command /stats [<player>]:
+    trigger:
+        if arg 1 is set:
+            send "&b&m---------------------------------------------"
+            send " "
+            send " &6Les statistiques de %arg 1 %"
+            send " "
+            send "&bKills: &f%{skywars.kills.%arg 1%}%"
+            send "&bWin: &f%{skywars.win.%arg 1 %}%"
+            send "&bcoins: &f%{altasy.coins.%arg 1%}%"
+            send "&bnombre de parties joués: &f%{skywars.games.%arg 1%}%"
+            if {skywars.win.%arg 1%} is less than 1000:
+                send "&bNiveau de joueur: &aPro Player"
+            else if {skywars.win.%arg 1%} is less than 600:
+                send "&bNiveau de joueur: &6Moyen"
+            else if {skywars.%arg 1%} is less than 200:
+                send "&bNiveau de joueur: &cNoob"
+            send " "
+            send "&6Les statistiques de %arg 1%"
+            send " "
+            send "&b&m---------------------------------------------"
+command /prix [<text>] [<number>]:
+    permission: admin.skywars
+    trigger:
+        if arg 1 is "Enchanteur":
+            if number argument is set:
+                set {prix.kit.Enchanteur} to arg 2 
+                broadcast "&6&lCONFIG ─ &r&e prix du kit &aEnchanteur &ea été fixé à &a%{prix.kit.Enchanteur}%"
+        if arg 1 is "Archer":
+            if number argument is set:
+                set {prix.kit.Archer} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aArcher &ea été defeni a &a%{prix.kit.Archer}%"
+        if arg 1 is "Intrépide":
+            if number argument is set:
+                set {prix.kit.Intrépide} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aIntrépide &ea été defeni a &a%{prix.kit.Intrépide}%"
+        if arg 1 is "Chevalier":
+            if number argument is set:
+                set {prix.kit.Chevalier} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aChevalier &ea été defeni a &a%{prix.kit.Chevalier}%"
+        if arg 1 is "Tank":
+            if number argument is set:
+                set {prix.kit.Tank} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aTank &ea été defeni a &a%{prix.kit.Tank}%"
+        if arg 1 is "Healer":
+            if number argument is set:
+                set {prix.kit.Healer} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aHealer &ea été defeni a &a%{prix.kit.Healer}%"
+        if arg 1 is "Bonhomme":
+            if number argument is set:
+                set {prix.kit.Bonhomme} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aBonhomme &ede neige a été defeni a &a%{prix.kit.Bonhomme}%"
+        if arg 1 is "Teleporteur":
+            if number argument is set:
+                set {prix.kit.Teleporteur} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aTeleporteur &ea été defeni a &a%{prix.kit.Teleporteur}%"
+        if arg 1 is "Booster":
+            if number argument is set:
+                set {prix.kit.Booster} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aBooster &ea été defeni a &a%{prix.kit.Booster}%"
+        if arg 1 is "Gladiator":
+            if number argument is set:
+                set {prix.kit.Gladiator} to arg 2
+                broadcast "&6&lCONFIG - &r&ele prix du kit &aTeleporteur &ea été defeni a &a%{prix.kit.Gladiator}%"
+        if arg 1 is "Sauveteur":
+            if number argument is set:
+                set {prix.kit.Sauveteur} to arg 2 
+                broadcast "&6&lCONFIG ─ &r&e prix du kit &aSauveteur &ea été fixé à &a%{prix.kit.Sauveteur}%"
+        if arg 1 is "Kamikaze":
+            if number argument is set:
+                set {prix.kit.Kamikaze} to arg 2 
+                broadcast "&6&lCONFIG - &r&eprix du kit &aKamikaze &ea été fixé a &a%{prix.kit.Kamikaze}%"
+        if arg 1 is "Sorciére":
+            if number argument is set:
+                set {prix.kit.Sorciére} to arg 2
+                broadcast "&6&lCONFIG - &r&eprix du kit &aSorciére &ea été fixé a &a%{prix.kit.Sorciére}%"
+command /kit [<text>] [<text>]:
+    permission: skywars.kits
+    trigger:                  
+        if arg 1 is "Rusheur":
+            set {skywars.kit.%executor%} to "Rusheur"
+            send "{@prefix} &r&7Vous avez choisi le kit &bRusheur !"
+            play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+        if arg 1 is "Enchanteur":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Enchanteur}:
+                remove {prix.kit.Enchanteur} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Enchanteur"
+                send "{@prefix} &r&7Vous avez choisi le kit &bEnchanteur !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Enchanteur}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Archer":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Archer}:
+                remove {prix.kit.Archer} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Archer"
+                send "{@prefix} &r&7Vous avez choisi le kit &bArcher !"
+            else if {altasy.coins.%executor%} is less than {prix.kit.Archer}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "intrépide":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Intrépide}:
+                remove {prix.kit.Intrépide} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "intrépide"
+                send "{@prefix} &r&7Vous avez choisi le kit &bintrépide !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Intrépide}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Chevalier":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Chevalier}:
+                remove {prix.kit.Chevalier} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Chevalier"
+                send "{@prefix} &r&7Vous avez choisi le kit &bChevalier !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Chevalier}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Tank":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Tank}:
+                remove {prix.kit.Tank} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Tank"
+                send "{@prefix} &r&7Vous avez choisi le kit &bTank !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Tank}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Healer":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Healer}:
+                remove {prix.kit.Healer} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Healer"
+                send "{@prefix} &r&7Vous avez choisi le kit &bHealer !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Healer}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Bonhomme de neige":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Bonhomme}:
+                remove {prix.kit.Bonhomme} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Bonhomme"
+                send "{@prefix} &r&7Vous avez choisi le kit &bSnowball man !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Bonhomme}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Teleporteur":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Teleporteur}:
+                remove {prix.kit.Teleporteur} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Teleporteur"
+                send "{@prefix} &r&7Vous avez choisi le kit &bTeleporteur !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Teleporteur}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Kamikaze":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Kamikaze}:
+                remove {prix.kit.Kamikaze} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Kamikaze"
+                send "{@prefix} &r&7Vous avez choisi le kit &bKamikaze !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Kamikaze}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Booster":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Booster}:
+                remove {prix.kit.Booster} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Booster"
+                send "{@prefix} &r&7Vous avez choisi le kit &bBooster !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Booster}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Gladiator":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Gladiator}:
+                remove {prix.kit.Gladiator} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Gladiator"
+                send "{@prefix} &r&7Vous avez choisi le kit &bGladiator !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Gladiator}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Sauveteur":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Sauveteur}:
+                remove {prix.kit.Sauveteur} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Sauveteur"
+                send "{@prefix} &r&7Vous avez choisi le kit &bSauveteur !"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Sauveteur}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+        if arg 1 is "Sorciére":
+            if {altasy.coins.%executor%} is equal to or greater than {prix.kit.Sorciére}:
+                remove {prix.kit.Sorciére} from {altasy.coins.%executor%}
+                set {skywars.kit.%executor%} to "Sorciére"
+                send "{@prefix} &r&7Vous avez choisi le kit &bSorciére"
+                play raw sound "mob.cat.meow" at executor with pitch 1 volume 100
+            else if {altasy.coins.%executor%} is less than {prix.kit.Sorciére}:
+                set {skywars.kit.%executor%} to "Rusheur"
+                send "{@prefix} &r&cVous ne possedez pas assez de coins pour avoir ce kit"
+                play raw sound "mob.villager.no" at executor with pitch 1 volume 100
+on rightclick holding 425:
+    open chest with 4 rows named "&6Choisi une team" to player
+    wait 5 ticks
+    if {skywars.teammax} is 2:
+        format slot 2 of player with 425:4 named "&9Bleue &a(%{skywars.bluelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Blue"]
+        format slot 3 of player with 425:1 named "&cRouge &a(%{skywars.Redlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Red"]
+        format slot 4 of player with 425:10 named "&aVert &a(%{skywars.greenlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Green "]
+        format slot 5 of player with 425:13 named "&dMagenta &a(%{skywars.Magentalimit}%/%{skywars.teammax}%)" to close then run  [make player execute command "team Magenta"]
+        format slot 6 of player with 425:5 named "&5Violet &a(%{skywars.Purplelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Purple"]
+        format slot 9 of player with 425:14 named "&6Orange &a(%{skywars.Orangelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Orange"]
+        format slot 10 of player with 425:11 named "&eJaune &a(%{skywars.Yellowlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Yellow"]
+        format slot 11 of player with 425:7 named "&7Gris &a(%{skywars.Graylimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Gray"]
+    else if {skywars.teammax} is 3:
+        format slot 2 of player with 425:4 named "&9Bleue &a(%{skywars.Bluelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Blue"]
+        format slot 3 of player with 425:1 named "&cRouge &a(%{skywars.Redlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Red"]
+        format slot 4 of player with 425:10 named "&aVert &a(%{skywars.greenlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Green "]
+        format slot 5 of player with 425:13 named "&dMagenta &a(%{skywars.Magentalimit}%/%{skywars.teammax}%)" to close then run  [make player execute command "team Magenta"]
+        format slot 6 of player with 425:5 named "&5Violet &a(%{skywars.Purplelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Purple"]
+        format slot 9 of player with 425:14 named "&6Orange &a(%{skywars.Orangelimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Orange"]
+        format slot 10 of player with 425:11 named "&eJaune &a(%{skywars.Yellowlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Yellow"]
+        format slot 11 of player with 425:7 named "&7Gris &a(%{skywars.Graylimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Gray"]
+        format slot 12 of player with 425:6 named "&3Cyan &a(%{skywars.Cyanlimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Cyan"]
+        format slot 13 of player with 425 named "&0Noir &a(%{skywars.Blacklimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Black"]
+        format slot 14 of player with 425:12 named "&bAqua &a(%{skywars.Aqualimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Aqua"]
+        format slot 15 of player with 425:9 named "&dRose &a(%{skywars.Pinklimit}%/%{skywars.teammax}%)" to close then run [make player execute command "team Pink"]
+on rightclick holding 399:
+    open chest with 4 rows named "&8Choix des kits " to player
+    wait 5 ticks
+    format slot 1 of player with 24 named "&eRusheur" with lore "&6prix: &aGRATUIT !&7||&7- 32x blocks de sandstone||&7- 12x steaks|| &7- epée en bois" to close then run [make player execute command "kit Rusheur"]
+    format slot 2 of player with 116 named "&9Enchanteur" with lore "&6prix: &e%{prix.kit.Enchanteur}%coins||&&7- 64x boutaille d'exp||&7- 1x table d'enchant||&7- 12x lapis" to close then run [make player execute command "kit Enchanteur"]
+    format slot 3 of player with 261 named "&2Archer" with lore "&6prix: &e%{prix.kit.Archer}%coins||&7- 1 arc||&7- 16 fléches||&5- chaque 5 minute vous obtenez un arc avec des fléches explosive !" to close then run [make player execute command "kit Archer"]
+    format slot 4 of player with 46 named "&cIntrépide" with lore "&6prix: &e%{prix.kit.Intrépide}%coins||&7- 5x tnt||&7- 1x briquet||&7- 1x seau d'eau||&7- 1x hache en pierre" to close then run [make player execute command "kit Intrépide"]
+    format slot 5 of player with 302 named "&bChevalier" with lore "&6prix: &e%{prix.kit.Chevalier}%coins||&7- 1x casque en chain||&7- 1x plastron en fer||&7- 1x pantalon en chain||&7- des bottes en fer||&7- 1 hache en fer" to close then run [make player execute command "kit Chevalier"]
+    format slot 6 of player with 311 named "&7Tank" with lore "&6prix: &e%{prix.kit.Tank}%coins||&7- 1x plastron en diams protection III||&7- 1 epeé en bois||&0- Slowness I" to close then run [make player execute command "kit Tank"]
+    format slot 7 of player with 373:16389 named "&cHealer" with lore "&6prix: &e%{prix.kit.Healer}%coins||&7- 3x healing splash||&7- 2x regen splash||&7- 3x potion de heal I" to close then run [make player execute command "kit Healer"]
+    format slot 8 of player with 332 named "&fSnowballMan" with lore "&6prix: &e%{prix.kit.Snowman}%coins||&7- 32x snowball||&7- 16x eggs||&7- 1 epeé en pierre knockback 1" to close then run [make player execute command "kit Bonhomme"]
+    format slot 9 of player with 368 named "&aTeleporteur" with lore "&6prix: &e%{prix.kit.Teleporter}%coins||&7- 3x enderpearl||&7- 1 hache en fer||&5- chaque 3min vous obtenez une nouvelle enderpearl" to close then run [make player execute command "kit Teleporteur"]
+    format slot 10 of player with 46 named "&6Kamikaze" with lore "&6prix: &e%{prix.kit.Kamikaze}%coins||&7- 2x tnt||&7- 1x briquet||&7- casque en fer protection 2|| &5-Quand vous mourrez vous faites une explosion de rayon 10 blocs " to close then run [make player execute command "kit Kamikaze"]
+    format slot 11 of player with 373:8267 named "&6Booster" with lore "&6prix: &e%{prix.kit.Booster}%coins||&7- &73x potion de jump boost I||&7- des bottes en diams depth strider III et feather_falling 3||&5- Stick knockback III" to close then run [make player execute command "kit Booster"]
+    format slot 12 of player with 276 named "&6Gladiator" with lore "&6prix: &e%{prix.kit.Gladiator}%coins||&7- &7epée en diams sharp 1||&7- plastron en diams||&7- des bottes en diams||&5- Un Barrier qui donne resistance III pendant 15 seconds||&5 mais le barrier sera enlever aprés" to close then run [make player execute command "kit Gladiator"]
+    format slot 13 of player with 95:1 named "&4&lSauveteur" with lore "&6prix: &e%{prix.kit.Sauveteur}%coins||&7- 1 epeé en fer||&7- pantalon en diams thorns 1||&5- un objet qui vous sauve quand vous tombez dans le vide||&5mais l'objet sera enlever aprés" to close then run [make player execute command "kit Sauveteur"]
+    format slot 14 of player with 373:16396 named "&4&lSorciére" with lore "&6prix: &e%{prix.kit.Sorciére}%coins||&7- 3x potions poison splash I||&7- 3x potions splash instant damage II||&7- 1 seau de lait||&7- 1x plastron en fer protection II||&7- 1x casque en fer protection II"
+command /start1: #Alléa du start
+	executable by: console
+	trigger:
+		wait 1 second
+		loop all players:
+			play raw sound "note.pling" at loop-player with pitch 1 volume 1
+			send loop-player title "&65" with subtitle "" for 1 second
+		execute console command "/start2"
+			
+command /start2: #Alléa du start
+	executable by: console
+	trigger:
+		wait 1 second
+		loop all players:
+			play raw sound "note.pling" at loop-player with pitch 1 volume 1
+			send loop-player title "&64" with subtitle "" for 1 second
+		execute console command "/start3"
+		
+command /start3: #Alléa du start
+	executable by: console
+	trigger:
+		wait 1 second
+		loop all players:
+			play raw sound "note.pling" at loop-player with pitch 1 volume 1
+			send loop-player title "&63" with subtitle "" for 1 second
+		execute console command "/start4"
+			
+command /start4: #Alléa du start
+	executable by: console
+	trigger:
+		wait 1 second
+		loop all players:
+			play raw sound "note.pling" at loop-player with pitch 1 volume 1
+			send loop-player title "&62" with subtitle "" for 1 second
+		execute console command "/start5"
+		
+command /start5: #Alléa du start
+	executable by: console
+	trigger:
+		wait 1 second
+		loop all players:
+			play raw sound "note.pling" at loop-player with pitch 1 volume 1
+			send loop-player title "&c1" with subtitle "" for 1 second
+		execute console command "/startfinal"
+		
+command /startfinal: #Alléa du start FINAL
+	executable by: console
+	trigger:
+		wait 1 second
+		set {skywars.isStart} to now
+		set {skywars.Event} to "&aRemplissage des coffres:"
+		set {skywars.Event.M} to "05"
+		set {skywars.Event.S} to "59"
+		set {skywars.players} to number of all players
+		set {skywars.Time.M} to 00
+		set {skywars.Time.S} to 0
+		set {skywars.Time.H} to 00
+		execute console command "/time set 0"
+		wait 5 ticks
+		enable pvp in all worlds
+		broadcast "&6&m---------------------------------------------"
+		broadcast ""
+		broadcast "{@prefix} &f&lBonne chance ! et bonne game"
+		broadcast ""
+		broadcast "&f&l[&c&l!&f&l] &r&fSignaler un bug? "
+		broadcast "&6&m---------------------------------------------"
+		loop all players:
+			set tab header to "   &b&lSkywars   " and footer to "&a&lAltasyNET" for loop-player
+			make loop-player execute command "/timermaj"
+			set the freeze state of loop-player to false
+			play raw sound "random.explode" at loop-player with pitch 1 volume 1
+			if {skywars.kit.%loop-player%} is not set:
+				set {skywars.kit.%loop-player%} to "Rusheur"
+			if {skywars.kit.%loop-player%} is "Rusheur":
+				give loop-player 32 24
+				give loop-player 12 364
+				give loop-player 1 268
+			if {skywars.kit.%loop-player%} is "Enchanteur":
+				give loop-player 32 384
+				give loop-player 1 116
+				give loop-player 12 351:4
+			if {skywars.kit.%loop-player%} is "Archer":
+				give loop-player 1 261
+				give loop-player 16 262
+			if {skywars.kit.%loop-player%} is "Intrépide":
+				give loop-player 5 46
+				give loop-player 1 326
+				give loop-player 1 275
+				give loop-player 1 259
+			if {skywars.kit.%loop-player%} is "Tank":
+				set loop-player's chestplate to diamond chestplate of protection 3
+				give loop-player 1 268
+				apply slowness 1 to loop-player for 99999 seconds
+			if {skywars.kit.%loop-player%} is "Chevalier":
+				equip loop-player with 302
+				equip loop-player with 307
+				equip loop-player with 304
+				equip loop-player with 309
+				give loop-player 1 258
+			if {skywars.kit.%loop-player%} is "Healer":
+				give loop-player 3 373:16389
+				give loop-player 2 373:16417
+				give loop-player 3 373:8197
+			if {skywars.kit.%loop-player%} is "Bonhomme":
+				give loop-player 32 332 
+				give loop-player 16 344
+				give loop-player 1 272
+			if {skywars.kit.%loop-player%} is "Teleporteur":
+				give loop-player 3 368
+				give loop-player 1 258
+			if {skywars.kit.%loop-player%} is "Kamikaze":
+				give loop-player 2 46
+				give loop-player 1 259
+				give loop-player 1 iron helmet
+			if {skywars.kit.%loop-player%} is "Booster":
+				give loop-player 3 373:8267
+				set loop-player's boots to diamond boots of depth_strider 3 
+				give loop-player 1 280 of knockback 3 
+			if {skywars.kit.%loop-player%} is "Gladiator":
+				give loop-player 1 276 of sharpness 1
+				set loop-player's chestplate to diamond chestplate 
+				set loop-player's boots to diamond boots
+				give loop-player 1 168 named "&f&lShield"
+			if {skywars.kit.%loop-player%} is "Sauveteur":
+				give loop-player 1 267
+				set loop-player's leggings to diamond leggings of thorns 1
+				give loop-player 1 95:1 named "&6&lPLATFORM MAGIC"
+			if {skywars.kit.%loop-player%} is "Sorciére":
+				give loop-player 3 373:16388
+				give loop-player 3 373:16428
+				set loop-player's chestplate to iron chestplate of protection 3
+				set loop-player's boots to iron boots of protection 3
+		broadcast "{@prefix} &7Les degats avec le pvp seront actifs dans &610 secondes."
+		wait 10 seconds
+		set {skywars.Damage} to now
+		broadcast "&7Les degats sont desormais &aactif"
+on rightclick with 168 named "&f&lShield":
+    if {skywars.kit.%player%} is "Gladiator":
+        apply resistance 3 to player for 16 seconds
+        send "&6KIT &avous avez obtenu l'effet &9Resistance &apendant 15 seconds"
+        wait 16 seconds
+        loop all items in the inventory of player:
+            if loop-item is 166 named "&f&lShield":
+                remove X of loop-item from the player
+on rightclick with 95 named "&6&lPLATFORM MAGIC":
+    if {skywars.kit.%player%} is "Sauveteur":
+        set {schem} to player's location
+        paste schematic "platform.schematic" at {schem}
+        wait 1 tick
+        paste schematic "platform1.schematic" at {schem}
+        wait 1 tick
+        paste schematic "platform2.schematic" at {schem}
+        send "&6KIT &avous avez 10 seconds pour s'enfuir avant que la platform disparaît"
+        wait 11 seconds
+        paste schematic "air.schematic" at {schem}
+on place:
+    if {skywars.isStart} is set:
+        if event-block is 166 named "&f&lShield":
+            cancel event
+every 3 minutes:
+        loop all players:
+            if {skywars.isStart} is set:
+                if {skywars.kit.%loop-player%} is "Teleporteur":
+                    give loop-player 1 368
+                    send "&6Kit &avous avez obtenu une enderpearl grace a votre kit !"
+                    stop
+on projectile hit:
+    if projectile is an arrow:
+        if {explode.%shooter%} is true:	
+            create explosion of force 4 at projectile
+            stop
+on projectile hit:
+    {arrows::%projectile%} is true
+    delete {arrows::%projectile%}
+    delete projectile
+on shoot:
+    name of shooter's tool is "&cArc &7- &6KA-BOOM"
+    set {explode.%shooter%} to true
+on shoot:
+    if shooter is a player:
+        if projectile is an arrow:
+            set {arrows::%projectile%} to true
+on join:
+    if {skywars.kit.%player%} is "Archer":
+        set {explode.%player%} to false
+every 5 minutes:
+    loop all players:
+        if {skywars.isStart} is set:
+            if {skywars.kit.%player%} is "Archer":
+                give player 1 261 named "&cArc &7- &6KA-BOOM"
+                give player 2 262
+                send "&6Kit &avous avez obtenu l'arc d'explosion grace a votre kit !"
+on death of a player:
+	if {skywars.kit.%victim%} is "Kamikaze":
+		create explosion of force 5 in radius 10 of victim
+		play raw sound "mob.wither.spawn" at attacker with pitch 1 volume 100
+		send "&6Kit &cVotre explosion a était fait avec &asuccés"
+
+
+		
+#---------------------------------------------------------------------------#
+#					   		GESTION DE TIMING								#
+#---------------------------------------------------------------------------#
+
+every 1 second:
+	if {skywars.isStart} is set:
+		if {skywars.isPaused} is not set:
+			add 1 to {skywars.Time.S}
+			if {skywars.Time.S} is more than or equal to 60:
+				set {skywars.Time.S} to 0
+				add 1 to {skywars.Time.M}
+	make all players execute command "/timermaj"
+every 1 second:
+    if {skywars.Time.M} is equal to 60:
+        add 1 to {skywars.Time.H}
+every 1 second:
+    if {skywars.isStart} is set:
+        if {skywars.Event} is "&aRemplissage des coffres:"
+            remove 1 from {skywars.Event.S}
+            if {skywars.Event.S} is equal to 0:
+                remove 1 from {skywars.Event.M}
+                wait 1 second
+                set {skywars.Event.S} to "59"
+                if {skywars.Event.M} is equal to 0:
+                    execute console command "/firstload"
+                    wait 1 second
+                    execute console command "/refill"
+#---------------------------------------------------------------------------#
+#					   	 		SYSTEM DE Scoreboard						#
+#---------------------------------------------------------------------------#
+#Si vous voulez changer un ligne svp contacter moi car c un peu compliqué
+command /timermaj:
+	trigger:
+		if {skywars.isStart} is not set:
+			erase player's sidebar
+			set name of sidebar of player to "&f&l» &b&lSkywars &f&l«"
+			set score "&7Status: &fEn attente des joueurs" in sidebar of player to 8
+			set score "" in sidebar of player to 7
+			if {skywars.teams} is true:
+				set score "&7Mode: &f%{skywars.teammax}%vs%{skywars.teammax}%" in sidebar of player to 6
+			else:
+				set score "&7Mode: &fSOLO &f- &cNoCrossTeam" in sidebar of player to 6
+			if number of all players is equal to {skywars.minplayers}:
+				set score "&7Joueurs: &a%number of all players%&8/&f24" in sidebar of player to 5
+			else:
+				set score "&7Joueurs: &f%number of all players%&8/&f24" in sidebar of player to 5
+			set score "&7Aide: &f/skywars" in sidebar of player to 4
+			set score "&7kit: &6%{skywars.kit.%player%}%" in sidebar of player to 3
+			
+		else:
+			erase player's sidebar
+			set name of sidebar of player to "&f&l» &b&lSkywars &f&l«"
+			set score "%{skywars.Event}%" in sidebar of player to 10
+			set score "&f%{skywars.Event.M}%:%{skywars.Event.S}" in sidebar of player to 9
+			set score "&e&lDurée: &f%{skywars.Time.H}%&f:&f%{skywars.Time.M}%&f:&f%{skywars.Time.S}%" in sidebar of player to 8
+			loop all players:
+				set score "&7kills: &f%{skywars.ingame.kills.%player%}%" in sidebar of player to 7
+			set score "" in sidebar of player to 6
+			if {skywars.teams} is true:
+				set score "&7Mode: &f%{skywars.teammax}%vs%{skywars.teammax}%" in sidebar of player to 5
+			else:
+				set score "&6Mode: &fFFA - &cNoCrossTeam" in sidebar of player to 5
+			set score "&7Joueurs en vie: &a%{skywars.players}%" in sidebar of player to 4
+			if {Equipe::%player%} is "Blue":
+				set score "&7Team: &9Blue" in sidebar of player to 3
+			if {Equipe::%player%} is "Red":
+				set score "&7Team: &cRouge" in sidebar of player to 3
+			if {Equipe::%player%} is "Magenta":
+				set score "&7Team: &5Magenta" in sidebar of player to 3
+			if {Equipe::%player%} is "Yellow":
+				set score "&7Team: &eJaune" in sidebar of player to 3
+			if {Equipe::%player%} is "Green":
+				set score "&7Team: &aVert" in sidebar of player to 3
+			if {Equipe::%player%} is "Purple":
+				set score "&7Team: &5Violet" in sidebar of player to 3
+			if {Equipe::%player%} is "Cyan":
+				set score "&7Team: &3Cyan" in sidebar of player to 3
+			if {Equipe::%player%} is "Orange":
+				set score "&7Team: &6Orange" in sidebar of player to 3
+			if {Equipe::%player%} is "Pink":
+				set score "&7Team: &dRose" in sidebar of player to 3
+			if {Equipe::%player%} is "Aqua":
+				set score "&7Team: &bBleue clair" in sidebar of player to 3
+			if {Equipe::%player%} is "Black":
+				set score "&7Team: &0Noir" in sidebar of player to 3
+			if {Equipe::%player%} is "Gray":
+				set score "&7Team: &7Gris" in sidebar of player to 3
+#---------------------------------------------------------------------------#
+#					          SYSTEME T'CHAT								#
+#---------------------------------------------------------------------------#	
+	
+on chat:
+	cancel event
+	if {Equipe::%player%} is not set:
+		broadcast "&7%player% &f» %message%"
+	else:
+		if first character of message is "!":
+			replace "!" with "" in the message
+			if first character of message is set:
+				if {Equipe::%player%} is "Blue":
+					broadcast "&f[&eGlobal&f] &9%player% &f» %message%"
+				if {Equipe::%player%} is "Red":
+					broadcast "&f[&eGlobal&f] &c%player% &f» %message%"
+				if {Equipe::%player%} is "Green":
+					broadcast "&f[&eGlobal&f] &a%player% &f» %message%"
+				if {Equipe::%player%} is "Magenta":
+					broadcast "&f[&eGlobal&f] &d%player% &f» %message%"
+				if {Equipe::%player%} is "Purple":
+					broadcast "&f[&eGlobal&f] &5%player% &f» %message%"
+				if {Equipe::%player%} is "Orange":
+					broadcast "&f[&eGlobal&f] &6%player% &f» %message%"
+				if {Equipe::%player%} is "Yellow":
+					broadcast "&f[&eGlobal&f] &e%player% &f» %message%"
+				if {Equipe::%player%} is "Gray":
+					broadcast "&f[&eGlobal&f] &7%player% &f» %message%"
+				if {Equipe::%player%} is "Cyan":
+					broadcast "&f[&eGlobal&f] &3%player% &f» %message%"
+				if {Equipe::%player%} is "Black":
+					broadcast "&f[&eGlobal&f] &0%player% &f» %message%"
+				if {Equipe::%player%} is "Aqua":
+					broadcast "&f[&eGlobal&f] &b%player% &f» %message%"
+				if {Equipe::%player%} is "Pink":
+					broadcast "&f[&eGlobal&f] &d%player% &f» %message%"
+		else:
+			loop all players:
+				if {Equipe::%player%} is "Blue":
+					if {Equipe::%loop-player%} is "Blue":
+						send "&f(Équipe) &9%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Red":
+					if {Equipe::%loop-player%} is "Red":
+						send "&f(Équipe) &c%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Green":
+					if {Equipe::%loop-player%} is "Green":
+						send "&f(Équipe) &a%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Magenta":
+					if {Equipe::%loop-player%} is "Magenta":
+						send "&f(Équipe) &d%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Purple":
+					if {Equipe::%loop-player%} is "Purple":
+						send "&f(Équipe) &5%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Orange":
+					if {Equipe::%loop-player%} is "Orange":
+						send "&f(Équipe) &6%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Yellow":
+					if {Equipe::%loop-player%} is "Yellow":
+						send "&f(Équipe) &e%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Gray":
+					if {Equipe::%loop-player%} is "Gray":
+						send "&f(Équipe) &7%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Cyan":
+					if {Equipe::%loop-player%} is "Cyan":
+						send "&f(Équipe) &3%player% &f» %message% " to loop-player
+				if {Equipe::%player%} is "Black":
+					if {Equipe::%loop-player%} is "Black":
+						send "&f(Équipe) &0%player% &f» %message%" to loop-player
+				if {Equipe::%player%} is "Aqua":
+					if {Equipe::%loop-player%} is "Aqua":
+						send "&f(Équipe) &b%player% &f» %message%)" to loop-player
+				if {Equipe::%player%} is "Pink":
+					if {Equipe::%loop-player%} is "Pink":
+						send "&f(Équipe) &d%player% &f» %message%" to loop-player
+#---------------------------------------------------------------------------#
+#					 SYSTEME DETECTION MORTS/Victoire						#
+#---------------------------------------------------------------------------#	
+			
+on death of player:
+	play raw sound "mob.cat.meow" at attacker with pitch 1 volume 100
+	add 5 to {altasy.coins.%victim%}
+	send "&8(&a+ 5 coins&8) &eParticipation"
+	send "{@prefix} &r&7Merci d'avoir joué sur AltasyNetwork" to victim
+	remove 1 from {skywars.Players}
+	add 1 to {skywars.kills.%attacker%}
+	add 1 to {skywars.ingame.kills.%attacker%}
+	add 5 to {altasy.coins.%attacker%}
+	execute console command "/gamemode 3 %player%" #Gamemode spectateur
+	if attacker is a player:
+		if {Equipe::%victim%} is "Blue":
+			set death message to "&9&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is not set:
+			set death message to "&f%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Red":
+			set death message to "&c&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Green":
+			set death message to "&a&l%player% a été tué par &e%attacker%!"
+		if {Equipe::%victim%} is "Magenta":
+			set death message to "&d&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Purple":
+			set death message to "&5&l%player% a été tué par &e%attacker%!"
+		if {Equipe::%victim%} is "Orange":
+			set death message to "&6&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Yellow":
+			set death message to "&e&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Gray":
+			set death message to "&7&l%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Cyan":
+			set death message to "&3&l%player% a été tué par &e%attacker%!"
+		if {Equipe::%victim%} is "Black":
+			set death message to "&0&l%player% a été tué par &e%attacker%"
+		if {Equipe::%victim%} is "Aqua":
+			set death message to "&b&l%player% a été tué par &e%attacker%"
+		if {Equipe::%victim%} is "Pink":
+			set death message to "&d&l%player% a été tué par &e%attacker%"
+	else:
+		if {Equipe::%victim%} is not set:
+			set death message to "&f%player% a été tué par &e%attacker% !"
+		if {Equipe::%victim%} is "Blue":
+			set death message to "&9&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Red":
+			set death message to "&c&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Green":
+			set death message to "&a&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Magenta":
+			set death message to "&d&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Purple":
+			set death message to "&5&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Orange":
+			set death message to "&6&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Yellow":
+			set death message to "&e&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Gray":
+			set death message to "&7&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Cyan": 
+			set death message to "&3&l%player% est mort par &e%attacker% !"
+		if {Equipe::%victim%} is "Black":
+			set death message to "&0&l%player% a été tué par &e%attacker%"
+		if {Equipe::%victim%} is "Aqua":
+			set death message to "&b&l%player% a été tué par &e%attacker%"
+		if {Equipe::%victim%} is "Pink":
+			set death message to "&d&l%player% a été tué par &e%attacker%"
+on death of a player:
+    if {skywars.teams} is false:
+        if {skywars.Players} is 1:
+            loop all players:
+                add 25 to {altasy.coins.%winner%}
+                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                launch star firework colored green at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored yellow at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored pink at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored red at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored cyan at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored green at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored yellow at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored pink at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored red at loop-player timed 1
+                wait 5 ticks
+                launch star firework colored cyan at loop-player timed 1
+                wait 2 seconds
+                broadcast "&b&m---------------------------------------"
+                broadcast ""
+                broadcast "&e&lGagnant: &e&r%winner%"
+                broadcast ""
+                broadcast "&e&lAvec &f&l{skywars.kills.%winner%}"
+                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                broadcast "&b&m---------------------------------------"
+                send "{@prefix} &r&8(&a+ 5 coins&8) &eParticipation" to winner
+                send "{@prefix} &r&8(&a+ 20 coins&8) &eVictoire" to winner
+                wait 10 seconds
+                set {skywars.noconnect} to now
+                kick loop-player due to "JayJay"
+                execute console command "/game reset"
+    else:
+        if {skywars.teammax} is 2:
+            if {skywars.bluelimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &9Equipe blue"
+                                                broadcast ""
+                                                broadcast "&e&lAvec &f&l{skywars.kills.%player%}"
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Blue":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Redlimit} is 1 or 2:
+                if {skywars.bluelimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &cEquipe Rouge"
+                                                broadcast ""
+                                                broadcast "&e&lAvec &f&l{skywars.kills.%player%}"
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Red":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Greenlimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.bluelimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &aEquipe Vert"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Green":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Yellowlimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.bluelimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &eEquipe Jaune"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Yellow":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Magentalimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.bluelimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &dEquipe Magenta"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Magenta":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Purplelimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &5Equipe Violet"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Purple":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Orangelimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.bluelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &6Equipe Orange"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Orange":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+            if {skywars.Graylimit} is 1 or 2:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.bluelimit} is 0:
+                                        if {skywars.Orangelimit} is 0:
+                                            loop all players:
+                                                execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored green at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored yellow at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored pink at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored red at loop-player timed 1
+                                                wait 5 ticks
+                                                launch star firework colored cyan at loop-player timed 1
+                                                wait 2 seconds
+                                                broadcast "&b&m---------------------------------------"
+                                                broadcast ""
+                                                broadcast "&e&lGagnant: &7Equipe Gris"
+                                                broadcast ""
+                                                broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                broadcast "&b&m---------------------------------------"
+                                                if {Equipe::%loop-player%} is "Gray":
+                                                    add 25 to {altasy.coins.%loop-player%}
+                                                    add 1 to {skywars.win.%loop-player%}
+                                                    send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                    send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                wait 10 seconds
+                                                set {skywars.noconnect} to now
+                                                kick loop-player due to "JayJay"
+                                                execute console command "/game reset"
+        if {skywars.teamamx} is 3:
+            if {skywars.bluelimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &9Equipe blue"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Blue":
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Redlimit} is 1 or 2 or 3:
+                if {skywars.bluelimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &cEquipe Rouge"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Red":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Greenlimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.bluelimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &aEquipe Vert"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Green":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Yellowlimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &eEquipe Jaune"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Yellow":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Magentalimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.bluelimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &dEquipe Magenta"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Magenta":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Purplelimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &5Equipe Violet"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Purple":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Orangelimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.Purplelimit} is 0:
+                                    if {skywars.bluelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &6Equipe Orange"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Orange":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Graylimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Purplelimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &7Equipe Gris"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Gray":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Blacklimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.PurpleLimit} is 0:
+                                                if {skywars.Aqualimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &0Equipe Noir"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Black":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Aqualimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Purplelimit} is 0:
+                                                    if {skywars.Pinklimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &bEquipe Aqua"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Aqua":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+            if {skywars.Pinklimit} is 1 or 2 or 3:
+                if {skywars.Redlimit} is 0:
+                    if {skywars.Greenlimit} is 0:
+                        if {skywars.Yellowlimit} is 0:
+                            if {skywars.Magentalimit} is 0:
+                                if {skywars.bluelimit} is 0:
+                                    if {skywars.Orangelimit} is 0:
+                                        if {skywars.Graylimit} is 0:
+                                            if {skywars.BlackLimit} is 0:
+                                                if {skywars.Purplelimit} is 0:
+                                                    if {skywars.Aqualimit} is 0:
+                                                        loop all players:
+                                                            execute console command "/gamemode 3 %loop-player%" #Gamemode spectateur
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored green at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored yellow at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored pink at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored red at loop-player timed 1
+                                                            wait 5 ticks
+                                                            launch star firework colored cyan at loop-player timed 1
+                                                            wait 2 seconds
+                                                            broadcast "&b&m---------------------------------------"
+                                                            broadcast ""
+                                                            broadcast "&e&lGagnant: &dEquipe &d[P] Rose"
+                                                            broadcast ""
+                                                            broadcast "&e&lMerci d'avoir jouer sur &a&lAltasyNET"
+                                                            broadcast "&b&m---------------------------------------"
+                                                            if {Equipe::%loop-player%} is "Pink":
+                                                                add 1 to {skywars.win.%loop-player%}
+                                                                add 25 to {altasy.coins.%loop-player%}
+                                                                send "{@prefix} &r&8(&a+20 coins&8) &eVictoire" to loop-player
+                                                                send "{@prefix} &r&8(&a+5 coins&8) &eParticipation" to loop-player
+                                                            wait 10 seconds
+                                                            set {skywars.noconnect} to now
+                                                            kick loop-player due to "JayJay"
+                                                            execute console command "/game reset"
+		
+		
+				
+						
+		
+	
+		
+			
+						
